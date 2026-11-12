@@ -30,6 +30,7 @@ public class MainActivity extends Activity {
     private final Handler h = new Handler(Looper.getMainLooper());
     private BluetoothLeScanner scanner;
     private ScanCallback scanCb;
+    private final java.util.HashSet<String> seen = new java.util.HashSet<>();
 
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
@@ -109,12 +110,17 @@ public class MainActivity extends Activity {
         if (ad == null || !ad.isEnabled()) { log("Turn Bluetooth on."); return; }
         scanner = ad.getBluetoothLeScanner();
         log("Searching for Nabu (15 seconds)...");
+        seen.clear();
+        for (BluetoothDevice bd : ad.getBondedDevices()) log("Paired in phone: " + bd.getName() + " " + bd.getAddress());
         scanCb = new ScanCallback() {
             @Override public void onScanResult(int type, ScanResult r) {
                 BluetoothDevice d = r.getDevice();
                 String n = d.getName();
                 if (n == null && r.getScanRecord() != null) n = r.getScanRecord().getDeviceName();
-                if (n != null && n.startsWith("Nabu")) {
+                if (seen.add(d.getAddress())) log("Seen: " + n + " " + d.getAddress());
+                boolean match = d.getAddress().equalsIgnoreCase("FF:C0:8A:3F:45:1E")
+                        || (n != null && n.toLowerCase().startsWith("nabu"));
+                if (match) {
                     stopScan();
                     log("Found " + n + " " + d.getAddress());
                     NabuClient.get(MainActivity.this).connect(d);
